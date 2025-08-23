@@ -1,0 +1,12 @@
+version: "3.9"
+
+services:
+  worker_b:
+    build: .
+    container_name: project_b_worker
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: celery --workdir=/app/ --app=B_celery worker --loglevel=INFO --concurrency=1 --pool=threads --queues=B
+    environment:
+      - CELERY_BROKER_URL=redis://host.docker.internal:6379/0

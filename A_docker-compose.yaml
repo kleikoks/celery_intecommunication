@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: project_a_redis
+    ports:
+      - "6379:6379"
+
+  worker_a:
+    build: .
+    container_name: project_a_worker
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: celery --workdir=/app/ --app=A_celery worker --loglevel=INFO --concurrency=1 --pool=threads --queues=A
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+
+  pithon:
+    build: .
+    container_name: pithon
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: python3 A_main.py
+    depends_on:
+      - redis
