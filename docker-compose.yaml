@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+  # Common service
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  # BE services
+  be_service:
+    build:
+      dockerfile: be_service/Dockerfile
+    container_name: be_service
+    working_dir: /app
+    volumes:
+      - ./be_service/:/app
+    # Consumes messages only from ai_service queue
+    command: celery --workdir=/app/ --app=celery_config worker --loglevel=INFO --concurrency=1 --pool=threads --queues=be_service
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+
+  runner:
+    build:
+      dockerfile: be_service/Dockerfile
+    container_name: runner
+    working_dir: /app
+    volumes:
+      - ./be_service/:/app
+    command: python3 main.py
+    depends_on:
+      - redis
+
+  # AI service
+  ai_service:
+    build:
+      dockerfile: ai_service/Dockerfile
+    container_name: ai_service
+    working_dir: /app
+    volumes:
+      - ./ai_service/:/app
+    # Consumes messages only from ai_service queue
+    command: celery --workdir=/app/ --app=celery_config worker --loglevel=INFO --concurrency=1 --pool=threads --queues=ai_service
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      - redis
